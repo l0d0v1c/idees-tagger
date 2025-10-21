@@ -1,30 +1,67 @@
 #!/usr/bin/env python3
 """
 Script de test pour le NLI (Natural Language Inference)
-Teste directement les capacités d'inférence du modèle mDeBERTa
+Teste directement les capacités d'inférence du modèle mDeBERTa avec ONNX Runtime
 """
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
+import onnxruntime as ort
+import numpy as np
+from transformers import AutoTokenizer
 
 def test_nli():
     """Teste le modèle NLI avec des paires premise-hypothesis"""
 
     print("=" * 60)
-    print("Test NLI - Natural Language Inference")
+    print("Test NLI - Natural Language Inference (ONNX)")
     print("=" * 60)
 
-    # Configuration
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    print(f"\n1. Device: {device}")
+    # Chemins des fichiers locaux
+    model_path = "./model.onnx"
+    tokenizer_path = "./"
 
-    model_name = "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7"
+    print(f"\n1. Chargement du tokenizer depuis {tokenizer_path}")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    print(f"✓ Tokenizer chargé: {tokenizer.__class__.__name__}")
 
-    print(f"\n2. Chargement du modèle: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    model.to(device)
-    print("✓ Modèle chargé")
+    print(f"\n2. Chargement du modèle ONNX depuis {model_path}")
+    session = ort.InferenceSession(
+        model_path,
+        providers=['CPUExecutionProvider']
+    )
+    print("✓ Modèle ONNX chargé")
+
+    # Fonction helper pour faire l'inférence
+    def predict_nli(premise, hypothesis):
+        """Prédit la relation NLI entre premise et hypothesis"""
+        # Tokeniser
+        inputs = tokenizer(
+            premise,
+            hypothesis,
+            truncation=True,
+            max_length=128,
+            padding='max_length',
+            return_tensors='np'
+        )
+
+        # Préparer les inputs pour ONNX Runtime
+        ort_inputs = {
+            'input_ids': inputs['input_ids'].astype(np.int64),
+            'attention_mask': inputs['attention_mask'].astype(np.int64)
+        }
+
+        # Inférence
+        outputs = session.run(None, ort_inputs)
+        logits = outputs[0][0]
+
+        # Appliquer softmax pour obtenir les probabilités
+        exp_logits = np.exp(logits - np.max(logits))
+        probs = exp_logits / exp_logits.sum()
+
+        # Labels: entailment (0), neutral (1), contradiction (2)
+        label_names = ["entailment", "neutral", "contradiction"]
+        prediction_dict = {name: round(float(prob) * 100, 1) for prob, name in zip(probs, label_names)}
+
+        return prediction_dict
 
     # Test 1: Premise en allemand, Hypothesis en anglais
     print("\n" + "=" * 60)
@@ -37,11 +74,7 @@ def test_nli():
     print(f"\nPremise:    {premise}")
     print(f"Hypothesis: {hypothesis}")
 
-    input_data = tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
-    output = model(input_data["input_ids"].to(device))
-    prediction = torch.softmax(output["logits"][0], -1).tolist()
-    label_names = ["entailment", "neutral", "contradiction"]
-    prediction_dict = {name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)}
+    prediction_dict = predict_nli(premise, hypothesis)
 
     print("\nRésultats:")
     for label, score in prediction_dict.items():
@@ -60,10 +93,7 @@ def test_nli():
     print(f"\nPremise:    {premise}")
     print(f"Hypothesis: {hypothesis}")
 
-    input_data = tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
-    output = model(input_data["input_ids"].to(device))
-    prediction = torch.softmax(output["logits"][0], -1).tolist()
-    prediction_dict = {name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)}
+    prediction_dict = predict_nli(premise, hypothesis)
 
     print("\nRésultats:")
     for label, score in prediction_dict.items():
@@ -82,10 +112,7 @@ def test_nli():
     print(f"\nPremise:    {premise}")
     print(f"Hypothesis: {hypothesis}")
 
-    input_data = tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
-    output = model(input_data["input_ids"].to(device))
-    prediction = torch.softmax(output["logits"][0], -1).tolist()
-    prediction_dict = {name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)}
+    prediction_dict = predict_nli(premise, hypothesis)
 
     print("\nRésultats:")
     for label, score in prediction_dict.items():
@@ -104,10 +131,7 @@ def test_nli():
     print(f"\nPremise:    {premise}")
     print(f"Hypothesis: {hypothesis}")
 
-    input_data = tokenizer(premise, hypothesis, truncation=True, return_tensors="pt")
-    output = model(input_data["input_ids"].to(device))
-    prediction = torch.softmax(output["logits"][0], -1).tolist()
-    prediction_dict = {name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)}
+    prediction_dict = predict_nli(premise, hypothesis)
 
     print("\nRésultats:")
     for label, score in prediction_dict.items():
