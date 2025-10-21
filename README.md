@@ -11,8 +11,10 @@ Ce répertoire contient les fichiers et scripts pour utiliser le modèle de clas
 - `tokenizer_config.json`, `special_tokens_map.json`, etc.
 
 **Code et documentation**:
-- `TextClassifier.swift` - Classe Swift pour iOS avec ONNX Runtime
-- `test_model.py` - Script Python pour tester le modèle
+- `TextClassifier.swift` - Classe Swift pour classification zero-shot iOS
+- `NLITester.swift` - Classe Swift pour tests NLI directs
+- `test_model.py` - Script Python pour tester la classification zero-shot
+- `test_nli.py` - Script Python pour tester le NLI directement
 - `README.md` - Ce fichier
 - `SETUP_IOS.md` - Guide complet d'intégration iOS
 - `SOLUTION_FINALE.md` - Explication détaillée de la solution
@@ -21,6 +23,7 @@ Ce répertoire contient les fichiers et scripts pour utiliser le modèle de clas
 
 ### 1. Tester le modèle en Python
 
+**Classification zero-shot:**
 ```bash
 python3 test_model.py
 ```
@@ -32,6 +35,17 @@ python3 test_model.py
 3. entertainment    0.42%
 4. environment      0.04%
 ```
+
+**Test NLI direct (Natural Language Inference):**
+```bash
+python3 test_nli.py
+```
+
+**Résultats attendus:**
+- Test 1 (Multilingue): 82.4% entailment
+- Test 2 (Entailment): 99.9% entailment ✓
+- Test 3 (Contradiction): 99.5% contradiction ✓
+- Test 4 (Neutral): 99.8% neutral ✓
 
 ### 2. Intégrer dans une app iOS
 
@@ -57,8 +71,9 @@ dependencies: [
 2. Copiez `spm.model` dans votre projet Xcode
 3. Assurez-vous qu'ils sont ajoutés au Target > Build Phases > Copy Bundle Resources
 
-#### Étape 3: Utiliser TextClassifier
+#### Étape 3: Utiliser TextClassifier ou NLITester
 
+**Classification zero-shot (TextClassifier.swift):**
 ```swift
 let classifier = TextClassifier()
 
@@ -79,6 +94,27 @@ let results = try classifier.classify(text: text, candidateLabels: labels)
 for result in results {
     print("\(result.label): \(result.score * 100)%")
 }
+```
+
+**Test NLI direct (NLITester.swift):**
+```swift
+let tester = NLITester()
+
+// Charger le modèle
+try tester.loadModel(modelPath: modelPath, tokenizerPath: tokenizerPath)
+
+// Tester une paire premise-hypothesis
+let result = try tester.predict(
+    premise: "Angela Merkel is a politician in Germany",
+    hypothesis: "Angela Merkel is a politician"
+)
+
+print("Entailment: \(result.entailment * 100)%")      // ~99.9%
+print("Neutral: \(result.neutral * 100)%")            // ~0.1%
+print("Contradiction: \(result.contradiction * 100)%") // ~0.0%
+
+// Ou exécuter tous les tests
+try tester.runAllTests()
 ```
 
 ## ⚠️ Important: Pourquoi ONNX Runtime au lieu de CoreML?
