@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode
+*.xcworkspace
+!default.xcworkspace
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+*.xcuserstate
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude
+.claude/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
